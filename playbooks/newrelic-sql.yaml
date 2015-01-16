@@ -1,0 +1,5 @@
+- hosts: all
+  roles:
+  - sql
+  vars_files:
+    - external_vars.yaml

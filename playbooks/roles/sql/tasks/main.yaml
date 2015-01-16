@@ -1,0 +1,52 @@
+---
+- name: update apt cache
+  apt:
+    update_cache=yes
+
+- name: install curl package
+  apt:
+    name=curl
+    state=present
+
+- name: make newrelic npi folder
+  file: path=/etc/newrelic-npi
+        state=directory
+        recurse=yes
+        owner=root
+        group=root
+        mode=0755
+
+- name: copy shell script
+  template: src=npi.sh.j2
+            dest=/etc/newrelic-npi/npi.sh
+            owner=root
+            group=root
+            mode=0644
+
+- name: download newrelic platform installer
+  command: bash npi.sh
+           chdir=/etc/newrelic-npi
+           creates=/etc/newrelic-npi/npi
+
+- name: download the mysql plugin
+  shell:  bash /etc/newrelic-npi/npi.sh fetch nrmysql -y
+          creates=/etc/newrelic-npi/plugins/com.newrelic.plugins.mysql.instance
+
+- name: prepare the mysql plugin
+  shell: bash /etc/newrelic-npi/npi.sh prepare nrmysql -n
+         creates=/etc/newrelic-npi/plugins/com.newrelic.plugins.mysql.instance/newrelic_mysql_plugin-2.0.0/config/plugin.json
+
+#- name: copy mysql plugin configuration
+#  template: src=plugin.json.j2
+#            dest=/etc/newrelic-npi/plugins/com.newrelic.plugins.mysql.instance/newrelic_mysql_plugin-2.0.0/config/plugin.json.j2
+#            owner=root
+#            group=root
+#            mode=0644
+
+- name: add service for the mysql plugin
+  shell: bash /etc/newrelic-npi/npi.sh --distro=debian --start
+         creates=/etc/init.d/newrelic_plugin_com.newrelic.plugins.mysql.instance
+
+- name: start the mysql plugin
+  shell: bash /etc/newrelic-npi/npi.sh start nrmysql
+         chdir=/etc/newrelic-npi
